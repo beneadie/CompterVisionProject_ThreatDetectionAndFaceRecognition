@@ -1,0 +1,4 @@
+from weapondetect.detecting_images import detect_objects_and_plot
+
+
+detect_objects_and_plot("C:/Users/User/Documents/GitHub/CompterVisionProject_ThreatDetectionAndFaceRecognition/test_images/taliban_image.jpg")
