@@ -1,0 +1,1 @@
+class_objects_locations = dict(class_objects_locations_new_temp)

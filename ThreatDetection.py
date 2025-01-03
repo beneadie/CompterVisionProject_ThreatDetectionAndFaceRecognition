@@ -112,7 +112,6 @@ def analyze_threat(
      if raised_arms_TF == False:
           danger_score+=40
 
-
      danger_score - ((mean_confidence_known_face_arr * 30) * count_known_faces)
 
      if danger_score > 300:
@@ -365,7 +364,7 @@ while cap.isOpened():
      #     pass
 
 
-     """YOLO models are have general usefulness so run first"""
+     """YOLO models are have general usefulness for """
      results_yolo11 = yolo11_model(annotated_frame)
      detections_yolo11 = results_yolo11[0].boxes
 
@@ -393,6 +392,8 @@ while cap.isOpened():
           if prediction_face[1] < 0.85 or prediction_face[0] not in trusted_face_classes_dict:
                results_face_cover = yolo11_model_FineTuned_Mask(annotated_frame)
                detections_face_cover = results_face_cover[0].boxes
+               annotated_frame = results_face_cover[0].plot()
+
 
                facecover_detected = False
                for box in detections_face_cover:
@@ -411,7 +412,7 @@ while cap.isOpened():
                #else:
                #     print("No person detected. Skipping face cover detection.")
                #     # Annotate the frame with YOLOv11 results
-               annotated_frame = results_yolo11[0].plot()
+
      elif person_detected:
           results_face_cover = yolo11_model_FineTuned_Mask(annotated_frame)
           detections_face_cover = results_face_cover[0].boxes
@@ -466,14 +467,15 @@ while cap.isOpened():
           label = yolo11_model.names[cls]
 
           if label in important_objects_to_track:  # Check if it's the object we want to track
-               dangerous_item_found = True
-               print("important item found")
+               if label != "person":
+                    dangerous_item_found = True
                location_class_arr = class_objects_locations[label]
                important_object_count[label] += 1
                x1, y1, x2, y2 = box.xyxy[0]  # Bounding box coordinates
                cx, cy = int((x1 + x2) / 2), int((y1 + y2) / 2)  # Object center
                # Save the object's center position
                current_position = (cx, cy)
+
 
 
                # Calculate speed
@@ -501,7 +503,7 @@ while cap.isOpened():
                          2,
                     )
                     # if too fast it was probably another instance of same object class
-                    if speed > 250:
+                    if len(location_class_arr) < 1 and speed > 250:
                          location_class_arr.append(current_position)
 
                     elif speed > 40:
@@ -509,17 +511,20 @@ while cap.isOpened():
                          cv2.putText(
                          annotated_frame,
                          "WARNING: Object moving fast!",
-                         (50, 50),  # Position of the text (x, y)
+                         (300, 550),  # Position of the text (x, y)
                          cv2.FONT_HERSHEY_SIMPLEX, 1,  # Font and size
                          (0, 0, 255), 2,  # Color (red) and thickness
                          cv2.LINE_AA
                          )
-               # Update previous position
-               prev_position = current_position
+               elif current_position:
+                    class_objects_locations_new_temp[label].append(current_position)
+
+              # prev_position = current_position
      """
      After checking speeds. need to repalce points all and remove ones which did not continue in this loop
      """
-     class_objects_count = dict(class_objects_locations_new_temp)
+     class_objects_locations = dict(class_objects_locations_new_temp)
+
 
 
      """Mediapipe for detecting whether hands are raised or grip/fist pose"""
@@ -621,7 +626,15 @@ while cap.isOpened():
                # add hand landmarks and connections to existing yolo frame
                mp_drawing.draw_landmarks(annotated_frame, landmarks, mp_hands.HAND_CONNECTIONS)
 
-     if dangerous_item_found:
+     if dangerous_item_found == True:
+          cv2.putText(
+               annotated_frame,
+               "Dangersou item found",
+               (300, 330),  # Position of the text (x, y)
+               cv2.FONT_HERSHEY_SIMPLEX, 1,  # Font and size
+               (0, 0, 255), 2,  # Color  and thickness
+               cv2.LINE_AA
+               )
           danger_items_last_15_frames.append(True)
      else:
           danger_items_last_15_frames.append(False)
