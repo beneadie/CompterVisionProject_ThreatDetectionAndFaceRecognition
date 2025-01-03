@@ -78,7 +78,7 @@ def analyze_threat(
 
      if (high_speed_items_dict["baseball bat"] > 0) or (high_speed_items_dict["knife"] > 0):
           if count_known_faces > 7 and mean_confidence_known_face_arr >= 0.8:
-               return ("Low Risk", (0, 255, 0))#"green")
+               return ("Low Risk dangerous item but known face", (0, 255, 0))#"green")
           elif count_known_faces > 4 and mean_confidence_known_face_arr  >= 0.8:
                return ("Moderate Risk.", (0, 255, 255))#"yellow")
           elif count_known_faces > 4 and mean_confidence_known_face_arr  >= 0.5:
@@ -103,21 +103,29 @@ def analyze_threat(
      for key in high_risk_items_count_dict:
           danger_score = danger_score + (high_risk_items_count_dict[key] * notable_items_risk_estimate[key])
 
-     if grip_fist_TF == False:
+     if grip_fist_TF == True:
           danger_score+=40
 
-     if face_covering_TF == False:
+     if count_danger_items_frames > 1:
+          danger_score+=100
+     if count_danger_items_frames == 1:
+          danger_score+=60
+
+     if count_facecover_frames > 1:
           danger_score+=70
 
-     if raised_arms_TF == False:
+     if count_facecover_frames == 1:
+          danger_score+=50
+
+     if raised_arms_TF == True:
           danger_score+=40
 
      danger_score - ((mean_confidence_known_face_arr * 30) * count_known_faces)
 
-     if danger_score > 300:
-          return ("Moderate Risk. Call Home Owner", (0, 0, 255))#"red")
-     elif danger_score > 150:
-          return ("Moderate Risk. Text Home Owner", (0, 165, 255))#"orange")
+     if danger_score >150:
+          return ("High Risk. Call Home Owner", (0, 0, 255))#"red")
+     elif danger_score > 80:
+          return ("Medium Risk. Text Home Owner", (0, 165, 255))#"orange")
      else:
           return ("Low Risk", (0, 255, 0))#"green")
 
