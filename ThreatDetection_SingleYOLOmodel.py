@@ -30,12 +30,10 @@ Threat Detection Evaluation Function
 Kind of made it up as I wrote it
 """
 def analyze_threat(
-          danger_items_last_15_frames, facecover_last_15_frames,
           face_identity_last_15, high_speed_items_dict, grip_fist_TF,
           raised_arms_TF, high_risk_items_count_dict, face_covering_TF=False
           ):
      danger_score = 0
-
 
      # if it is people known then risk is dramatically reduced
      count_known_faces = 0
@@ -48,7 +46,7 @@ def analyze_threat(
           if confidence_Unknown_face_arr == []:
                mean_confidence_Unknown_face_arr = 0
 
-          if face_class_and_score[0] in trusted_face_classes_dict:
+          if face_class_and_score[0] in true_face_classes_dict:
                count_known_faces+=1
                confidence_known_face_arr.append(face_class_and_score[1])
           else:
@@ -61,22 +59,6 @@ def analyze_threat(
           mean_confidence_Unknown_face_arr = 0
      else:
           mean_confidence_Unknown_face_arr = sum(confidence_Unknown_face_arr) / len(confidence_Unknown_face_arr)
-
-     if (mean_confidence_Unknown_face_arr * 2) > mean_confidence_known_face_arr:
-          count_danger_items_frames = sum(danger_items_last_15_frames)
-          count_facecover_frames = sum(facecover_last_15_frames)
-          if count_danger_items_frames > 3 and count_facecover_frames > 3:
-               for key in high_speed_items_dict:
-                    if high_speed_items_dict[key] > 0:
-                         return ("ALERT POLICE!!!", (0, 0, 255))#"red")
-
-     if count_known_faces == 0:
-          count_danger_items_frames = sum(danger_items_last_15_frames)
-          count_facecover_frames = sum(facecover_last_15_frames)
-          if count_danger_items_frames > 3 and count_facecover_frames > 3:
-               for key in high_speed_items_dict:
-                    if high_speed_items_dict[key] > 0:
-                         return ("ALERT POLICE!!!", (0, 0, 255))#"red")
 
      if (high_speed_items_dict["baseball bat"] > 0) or (high_speed_items_dict["knife"] > 0):
           if count_known_faces > 7 and mean_confidence_known_face_arr >= 0.8:
@@ -95,7 +77,6 @@ def analyze_threat(
 
      if mean_confidence_known_face_arr > 0.9 and count_known_faces > 10:
           return ("Low Risk", (0, 255, 0))#"green")
-
 
 
      """failsafe incase i forgot something"""
@@ -128,10 +109,6 @@ def analyze_threat(
 """YOLOv11 pretrained default model detects humans and some other useful objects"""
 yolo11_model = YOLO('yolo11n.pt')
 
-"""Finetuned YOLOv11 model for detecting if person is wearing a mask"""
-yolo11_model_FineTuned_Mask = YOLO('wide_face_cover_yolo_model_15/detect/train/weights/best.pt')
-
-
 """Facial Recognition Support Vector Classifier Model"""
 # Initialize MTCNN detector and FaceNet model
 mtcnn = MTCNN(keep_all=True)
@@ -140,7 +117,7 @@ model_faces = InceptionResnetV1(pretrained='vggface2').eval()
 svm_model = joblib.load('svm_model_dummy_categories.pkl')
 # classes dictionary for facial identification - model with dummy classes to reduce bias
 classes_dict={
-     0:"ben", #ACTUAL CLASS
+     0:"Unknown",#"ben", #ACTUAL CLASS
      1:"Unknown",#"cricket",
      2:"Unknown",#"cucu",
      3:"Unknown",#"eli",
@@ -165,8 +142,8 @@ classes_dict={
      22:"Unknown",#"zlatan"
 }
 
-trusted_face_classes_dict = {
-    "ben" : True,
+true_face_classes_dict = {
+    #"ben" : True,
     "ryan" : True,
     "trump" : True,
     "obama" : True,
@@ -263,15 +240,6 @@ if not cap.isOpened():
 
 print("Press 'q' to exit.")
 
-
-yolo_custom_class_names_dict = {
-    "face - v1 2024-04-15 8:33pm" :"no mask",
-    "face - v1 2024-04-15 8-33pm" :"no mask",
-    "face_cover_one_category 2 - v1 2025-01-02 2:24am" : "mask",
-    "face_cover_one_category 2 - v1 2025-01-02 2-24am" : "mask"
-}
-
-
 important_objects_to_track = {
     "person" : True,
     "baseball bat": True,
@@ -287,10 +255,6 @@ prev_position = None
 frame_rate = cap.get(cv2.CAP_PROP_FPS) or 20
 
 last_15_faces = deque(maxlen=15)
-
-danger_items_last_15_frames = deque(maxlen=15)
-
-facecover_last_15_frames = deque(maxlen=15)
 
 """
 Can have multiple objects of same class we need to track.
@@ -383,50 +347,6 @@ while cap.isOpened():
                person_detected = True
                break
 
-     """
-     If a face is detected and face prediction is not known, perform face cover detection.
-     Preferably would do this every time but it adds to latency to infer yolo twice.
-     If a person is identified but no face, then runs.
-     if no person is detected then not worth it as can see mask in furniture
-     """
-     facecover_detected = False
-     if prediction_face:
-          if prediction_face[1] < 0.85 or prediction_face[0] not in trusted_face_classes_dict:
-               results_face_cover = yolo11_model_FineTuned_Mask(annotated_frame)
-               detections_face_cover = results_face_cover[0].boxes
-
-               facecover_detected = False
-               for box in detections_face_cover:
-                    cls = int(box.cls)  # Class ID
-                    label = yolo_custom_class_names_dict[yolo11_model_FineTuned_Mask.names[cls]]
-
-                    if label == "mask":
-                         #print(f"Face Cover Detected: {label}")
-                         facecover_detected = True
-
-
-                    #if facecover_detected:
-                    #     print("Action: Face Cover detected! Notify authorities.")
-                    #else:
-                    #     print("No facecover detected.")
-               #else:
-               #     print("No person detected. Skipping face cover detection.")
-               #     # Annotate the frame with YOLOv11 results
-               annotated_frame = results_yolo11[0].plot()
-     elif person_detected:
-          results_face_cover = yolo11_model_FineTuned_Mask(annotated_frame)
-          detections_face_cover = results_face_cover[0].boxes
-
-          facecover_detected = False
-          for box in detections_face_cover:
-               cls = int(box.cls)  # Class ID
-               label = yolo_custom_class_names_dict[yolo11_model_FineTuned_Mask.names[cls]]
-
-               if label == "mask":
-                    #print(f"Face Cover Detected: {label}")
-                    facecover_detected = True
-
-
 
      """
      Track the speed of the person or noteworthy object.
@@ -460,15 +380,12 @@ while cap.isOpened():
      "knife": 0,
      "scissors" :0
      }
-     dangerous_item_found = False
 
      for box in detections_yolo11:
           cls = int(box.cls)
           label = yolo11_model.names[cls]
 
           if label in important_objects_to_track:  # Check if it's the object we want to track
-               dangerous_item_found = True
-               print("important item found")
                location_class_arr = class_objects_locations[label]
                important_object_count[label] += 1
                x1, y1, x2, y2 = box.xyxy[0]  # Bounding box coordinates
@@ -622,18 +539,8 @@ while cap.isOpened():
                # add hand landmarks and connections to existing yolo frame
                mp_drawing.draw_landmarks(annotated_frame, landmarks, mp_hands.HAND_CONNECTIONS)
 
-     if dangerous_item_found:
-          danger_items_last_15_frames.append(True)
-     else:
-          danger_items_last_15_frames.append(False)
-     if facecover_detected:
-          facecover_last_15_frames.append(True)
-     else:
-          facecover_last_15_frames.append(False)
-
-
      """send data to threat anaylsis function"""
-     results_from_analysis_tuple = analyze_threat(danger_items_last_15_frames, facecover_last_15_frames, last_15_faces, high_speed_object_count, grip_fist_TF, raised_arms_TF, important_object_count, facecover_detected)
+     results_from_analysis_tuple = analyze_threat(last_15_faces, high_speed_object_count, grip_fist_TF, raised_arms_TF, important_object_count)
 
      if display_all == True:
           if grip_fist_TF == True:
@@ -654,18 +561,6 @@ while cap.isOpened():
                     (0, 165, 255), 2,  # Color and thickness
                     cv2.LINE_AA
                     )
-          if facecover_detected == True:
-               cv2.putText(
-                    annotated_frame,
-                    "Face Cover Detected",
-                    (300, 380),  # Position of the text (x, y)
-                    cv2.FONT_HERSHEY_SIMPLEX, 1,  # Font and size
-                    (0, 165, 255), 2,  # Color and thickness
-                    cv2.LINE_AA
-                    )
-
-
-
 
 
      # Display the annotated frame
