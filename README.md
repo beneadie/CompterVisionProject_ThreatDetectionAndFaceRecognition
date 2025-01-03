@@ -13,3 +13,4 @@ The threat detection uses multiple forms of vision analysis:
   - Media pipe model for hand poses
      -> uses poses as a weight for threat detection.
      -> can identify closed fist and grip poses, to estimate that an object is being held without having to train a new YOLO model, and it has significantly faster inference.
+YouTube demo: https://youtu.be/DSDL5DnXlrc
