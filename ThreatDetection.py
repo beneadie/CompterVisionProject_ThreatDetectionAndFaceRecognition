@@ -35,6 +35,8 @@ def analyze_threat(
           raised_arms_TF, high_risk_items_count_dict, face_covering_TF=False
           ):
      danger_score = 0
+     count_danger_items_frames = sum(danger_items_last_15_frames)
+     count_facecover_frames = sum(facecover_last_15_frames)
 
 
      # if it is people known then risk is dramatically reduced
@@ -63,17 +65,13 @@ def analyze_threat(
           mean_confidence_Unknown_face_arr = sum(confidence_Unknown_face_arr) / len(confidence_Unknown_face_arr)
 
      if (mean_confidence_Unknown_face_arr * 2) > mean_confidence_known_face_arr:
-          count_danger_items_frames = sum(danger_items_last_15_frames)
-          count_facecover_frames = sum(facecover_last_15_frames)
           if count_danger_items_frames > 3 and count_facecover_frames > 3:
                for key in high_speed_items_dict:
                     if high_speed_items_dict[key] > 0:
                          return ("ALERT POLICE!!!", (0, 0, 255))#"red")
 
      if count_known_faces == 0:
-          count_danger_items_frames = sum(danger_items_last_15_frames)
-          count_facecover_frames = sum(facecover_last_15_frames)
-          if count_danger_items_frames > 3 and count_facecover_frames > 3:
+          if count_danger_items_frames > 0 and count_facecover_frames > 0:
                for key in high_speed_items_dict:
                     if high_speed_items_dict[key] > 0:
                          return ("ALERT POLICE!!!", (0, 0, 255))#"red")
@@ -90,10 +88,10 @@ def analyze_threat(
           else:
                return ("Call Home Owner", (0, 165, 255))#"orange")
 
-     if face_covering_TF == True and count_known_faces < 5:
-          return ("High Risk. Call Home Owner", (0, 165, 255))#"orange")
+     if count_facecover_frames >= 5 and count_known_faces < 5:
+          return ("Moderate Risk.", (0, 255, 255))#"orange")
 
-     if mean_confidence_known_face_arr > 0.9 and count_known_faces > 10:
+     if mean_confidence_known_face_arr > 0.6 and count_known_faces > 5:
           return ("Low Risk", (0, 255, 0))#"green")
 
 
@@ -358,9 +356,10 @@ while cap.isOpened():
      #                    else:
      #                         #print("No embedding extracted.")
      #                         pass
-     #          else:
+               else:
+                    last_15_faces.append((None, 0))
      #               #print("Invalid face region.")
-     #               pass
+     #
      #else:
      #     #print("No faces detected.")
      #     pass
